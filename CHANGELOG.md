@@ -2,7 +2,7 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-16
 
 ### Added
 - Speech model picker: six free Whisper models (Tiny to Large v3 Turbo, English and multilingual), downloaded on demand.
