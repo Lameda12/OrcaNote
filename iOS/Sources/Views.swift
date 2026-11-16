@@ -83,6 +83,8 @@ struct RecordView: View {
             Label("Live captions", systemImage: "captions.bubble").font(.headline)
             if captions.lines.isEmpty {
                 Text("Captions appear after a few seconds of speech.").font(.callout).foregroundStyle(.secondary)
+                Text("Let everyone know you're recording, and get their consent where the law requires it.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             ForEach(captions.lines.suffix(8)) { line in
                 Text(line.text).font(.callout).frame(maxWidth: .infinity, alignment: .leading)
@@ -309,6 +311,12 @@ struct SettingsView: View {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                     Link("Source code", destination: URL(string: "https://github.com/Lameda12/OrcaNote")!)
                     Text("Notes are saved in Files → On My iPhone → OrcaNotes.").font(.footnote).foregroundStyle(.secondary)
+                }
+
+                Section {
+                    ForEach(LegalLinks.all, id: \.title) { Link($0.title, destination: $0.url) }
+                } header: { Text("Legal & support") } footer: {
+                    Text("OrcaNotes collects no data. Get consent from everyone before recording a meeting.")
                 }
             }
             .navigationTitle("Settings")

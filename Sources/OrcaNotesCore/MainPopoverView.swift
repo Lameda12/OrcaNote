@@ -87,7 +87,14 @@ public struct MainPopoverView: View {
                 .buttonStyle(.plain)
                 
                 Spacer()
-                
+
+                Link("Privacy", destination: LegalLinks.privacy)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Link("Terms", destination: LegalLinks.terms)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
                 Button(action: {
                     NSApplication.shared.terminate(nil)
                 }) {
