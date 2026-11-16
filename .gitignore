@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+.swiftpm/
+build/
+*.dmg
+.env
+.orca.env
+DerivedData/
+xcuserdata/
+# internal go-to-market notes, not part of the open-source project
+docs/VIRAL_MARKETING_PLAYBOOK.md
