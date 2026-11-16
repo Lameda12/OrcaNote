@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 echo "=== Packaging OrcaNotes.dmg ==="
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"

@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 echo "=== Building OrcaNotes (Release) ==="
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 # 1. Compile Swift in Release mode
-swift build -c release --arch arm64 --arch x86_64
+# Build each architecture separately, then merge. (A single multi-arch
+# `swift build` uses the Xcode build system, which rejects WhisperKit's
+# duplicate CLI product names.)
+swift build -c release --arch arm64
+swift build -c release --arch x86_64
+UNIVERSAL=".build/universal-release"
+rm -rf "$UNIVERSAL" && mkdir -p "$UNIVERSAL"
+lipo -create \
+  .build/arm64-apple-macosx/release/OrcaNotes \
+  .build/x86_64-apple-macosx/release/OrcaNotes \
+  -output "$UNIVERSAL/OrcaNotes"
 
 # 2. Setup .app bundle structure
 APP_DIR="build/OrcaNotes.app"
@@ -15,11 +25,11 @@ mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
 # 3. Copy executable & Info.plist
-cp ".build/apple/Products/Release/OrcaNotes" "$APP_DIR/Contents/MacOS/OrcaNotes"
+cp "$UNIVERSAL/OrcaNotes" "$APP_DIR/Contents/MacOS/OrcaNotes"
 cp "Info.plist" "$APP_DIR/Contents/Info.plist"
 chmod +x "$APP_DIR/Contents/MacOS/OrcaNotes"
 # SwiftPM resource bundles (WhisperKit deps) must ship inside the app
-for b in .build/apple/Products/Release/*.bundle; do [ -e "$b" ] && cp -R "$b" "$APP_DIR/Contents/Resources/"; done
+for b in .build/arm64-apple-macosx/release/*.bundle; do [ -e "$b" ] && cp -R "$b" "$APP_DIR/Contents/Resources/"; done
 cp "assets/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 # 4. Ad-hoc code signing (allows running without $99 Apple Developer cert)
