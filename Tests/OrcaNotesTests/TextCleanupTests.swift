@@ -50,6 +50,7 @@ final class CaptionLogicTests: XCTestCase {
         XCTAssertEqual(CaptionLogic.stripTags("[BLANK_AUDIO] hello (music) there"), "hello there")
         XCTAssertEqual(CaptionLogic.stripTags("call (555) now"), "call (555) now")
         XCTAssertEqual(CaptionLogic.stripTags("Wednesday. (laughs)"), "Wednesday.")
+        XCTAssertEqual(CaptionLogic.stripTags("(muffled speaking) Hello."), "Hello.")
     }
     func testNoiseFloorAdapts() {
         var floor: Float = 0.001

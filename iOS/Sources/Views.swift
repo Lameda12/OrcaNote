@@ -56,6 +56,8 @@ struct RecordView: View {
                     }
                 }
                 .padding()
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle("OrcaNotes")
             .navigationDestination(item: $model.savedNote) { NoteDetailView(note: $0) }
@@ -208,6 +210,7 @@ struct SettingsView: View {
     @State private var style = Preferences.defaultStyle
     @State private var aiPolish = Preferences.aiPolish
     @State private var groqKey = Keychain.read("groqApiKey") ?? ""
+    @State private var keyStatus = ""
 
     var body: some View {
         NavigationStack {
@@ -243,7 +246,11 @@ struct SettingsView: View {
                         SecureField("Groq API key (gsk_…)", text: $groqKey)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             .onSubmit { Keychain.write("groqApiKey", groqKey) }
-                        Button("Save key") { Keychain.write("groqApiKey", groqKey.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                        Button("Save key") {
+                            let status = Keychain.write("groqApiKey", groqKey.trimmingCharacters(in: .whitespacesAndNewlines))
+                            keyStatus = status == errSecSuccess ? "Saved to Keychain" : "Could not save the key (error \(status))"
+                        }
+                        if !keyStatus.isEmpty { Text(keyStatus).font(.footnote).foregroundStyle(.secondary) }
                         Link("Get a free key", destination: URL(string: "https://console.groq.com/keys")!)
                     }
                     Toggle("AI polish for dictation", isOn: $aiPolish)

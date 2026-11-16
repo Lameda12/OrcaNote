@@ -35,7 +35,7 @@ public enum CaptionLogic {
 
     /// Removes Whisper's non-speech tags such as [silence], [BLANK_AUDIO], (music).
     public static func stripTags(_ text: String) -> String {
-        text.replacingOccurrences(of: #"\[[^\]]*\]|\((?i:[^)]*(?:silence|music|blank|noise|inaudible|laugh|applause|cough|sigh|breath)[^)]*)\)"#,
+        text.replacingOccurrences(of: #"\[[^\]]*\]|\((?i:[^)]*(?:silence|music|blank|noise|inaudible|laugh|applause|cough|sigh|breath|muffled|speaking|talking|indistinct|chatter|crosstalk|static|sniff)[^)]*)\)"#,
                                   with: " ", options: .regularExpression)
             .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
