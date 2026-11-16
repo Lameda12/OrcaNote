@@ -79,6 +79,9 @@ public enum LLMClient {
         case .off:
             throw LLMError.unavailable("AI is turned off.")
         case .local:
+            #if os(iOS)
+            throw LLMError.unavailable("Ollama is not available on iPhone.")
+            #endif
             guard await OllamaService.isRunning() else {
                 throw LLMError.unavailable("Ollama is not running. Install it free from ollama.com, then open it.")
             }
@@ -87,8 +90,10 @@ public enum LLMClient {
                 throw LLMError.unavailable("Model \(model) is not downloaded yet. Download it in OrcaNotes settings.")
             }
             return try await OllamaService.chat(model: model, system: system, user: user, timeout: timeout, maxTokens: maxTokens)
+        case .apple:
+            return try await AppleIntelligence.respond(system: system, user: user)
         case .groq:
-            guard let key = Config.shared.groqApiKey else { throw LLMError.unavailable("Add a Groq API key first.") }
+            guard let key = Secrets.groqKey else { throw LLMError.unavailable("Add a Groq API key first.") }
             return try await groqChat(system: system, user: user, key: key, timeout: timeout, maxTokens: maxTokens)
         }
     }

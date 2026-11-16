@@ -19,7 +19,10 @@ public enum Preferences {
     }
     /// Which AI writes meeting summaries and polish. Defaults to on-device.
     public static var aiProvider: AIProvider {
-        get { AIProvider(rawValue: d.string(forKey: "aiProvider") ?? "") ?? .local }
+        get {
+            let p = AIProvider(rawValue: d.string(forKey: "aiProvider") ?? "") ?? AIProvider.platformDefault
+            return AIProvider.supported.contains(p) ? p : AIProvider.platformDefault
+        }
         set { d.set(newValue.rawValue, forKey: "aiProvider") }
     }
     public static var localLLM: String {

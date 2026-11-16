@@ -1,5 +1,6 @@
 import XCTest
 @testable import OrcaNotesCore
+@testable import OrcaShared
 
 final class TextCleanupTests: XCTestCase {
     func testRemovesFillersAndRepeats() {
@@ -44,8 +45,29 @@ final class CaptionLogicTests: XCTestCase {
         XCTAssertEqual(CaptionLogic.rms([0, 0, 0][...]), 0)
         XCTAssertEqual(CaptionLogic.rms([0.5, -0.5][...]), 0.5, accuracy: 0.0001)
     }
+    func testStripTags() {
+        XCTAssertEqual(CaptionLogic.stripTags("Ship on Friday. [silence]"), "Ship on Friday.")
+        XCTAssertEqual(CaptionLogic.stripTags("[BLANK_AUDIO] hello (music) there"), "hello there")
+        XCTAssertEqual(CaptionLogic.stripTags("call (555) now"), "call (555) now")
+        XCTAssertEqual(CaptionLogic.stripTags("Wednesday. (laughs)"), "Wednesday.")
+    }
+    func testNoiseFloorAdapts() {
+        var floor: Float = 0.001
+        for _ in 0..<50 { floor = CaptionLogic.updateNoiseFloor(floor, blockRMS: 0.0005) }
+        XCTAssertEqual(floor, 0.0005, accuracy: 0.0001)
+        // quiet mic: speech at 0.003 passes
+        XCTAssertGreaterThan(Float(0.003), CaptionLogic.speechThreshold(noiseFloor: floor))
+        // speech must not drag the floor up quickly
+        for _ in 0..<20 { floor = CaptionLogic.updateNoiseFloor(floor, blockRMS: 0.05) }
+        XCTAssertLessThan(floor, 0.01)
+        // noisy room: threshold rises
+        XCTAssertEqual(CaptionLogic.speechThreshold(noiseFloor: 0.02), 0.06, accuracy: 0.0001)
+        XCTAssertEqual(CaptionLogic.speechThreshold(noiseFloor: 0), CaptionLogic.absoluteSpeechFloor)
+    }
     func testMarkdown() {
-        let l = [CaptionLine(speaker: "You", text: "Hi", offset: 65)]
-        XCTAssertEqual(CaptionLogic.markdown(l), "**You** [01:05]: Hi")
+        let one = [CaptionLine(speaker: "You", text: "Hi", offset: 65)]
+        XCTAssertEqual(CaptionLogic.markdown(one), "[01:05] Hi")
+        let two = [CaptionLine(speaker: "You", text: "Hi", offset: 65), CaptionLine(speaker: "Them", text: "Hey", offset: 70)]
+        XCTAssertEqual(CaptionLogic.markdown(two), "**You** [01:05]: Hi\n\n**Them** [01:10]: Hey")
     }
 }

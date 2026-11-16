@@ -5,14 +5,14 @@
 <h1 align="center">OrcaNotes</h1>
 
 <p align="center">
-  <b>Private dictation and meeting notes for macOS.</b><br>
+  <b>Private dictation and meeting notes for Mac, iPhone and iPad.</b><br>
   Speak into any app, record calls with live captions, and keep every word on your Mac.
 </p>
 
 <p align="center">
   <a href="https://github.com/Lameda12/OrcaNote/actions/workflows/ci.yml"><img src="https://github.com/Lameda12/OrcaNote/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/platform-macOS%2014%2B%20%7C%20iOS%2017%2B-lightgrey.svg" alt="macOS 14+ and iOS 17+">
   <img src="https://img.shields.io/badge/swift-5.9-orange.svg" alt="Swift 5.9">
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-green.svg" alt="Apple Silicon and Intel">
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>
@@ -35,7 +35,29 @@
 | **Privacy first** | No account, no telemetry, no cloud storage. Everything runs on-device by default; Groq is an optional cloud alternative. |
 | **Universal app** | One build for Apple Silicon and Intel Macs. |
 
-## Install
+## iPhone and iPad
+
+The iOS app (in [`iOS/`](iOS)) shares the same core and runs fully on-device:
+
+- **Meeting mode**: record in-person meetings with live captions, then get an on-device transcript and summary.
+- **Dictate mode**: speak, pick a style, and the cleaned text is copied to the clipboard (or shared).
+- **Apple Intelligence summaries**: free and private on iOS 26 devices that support it; Groq is optional.
+- Notes are saved as Markdown in **Files → On My iPhone → OrcaNotes**.
+
+iOS does not let apps record other apps' audio or type into other apps, so on iPhone meetings are recorded with the microphone, and dictated text goes to the clipboard.
+
+Build it:
+
+```bash
+brew install xcodegen
+cd iOS
+xcodegen generate
+open OrcaNotesiOS.xcodeproj
+```
+
+To run on a device, create `iOS/Signing.local.xcconfig` (gitignored) with `DEVELOPMENT_TEAM = <your team ID>`.
+
+## Install (Mac)
 
 ### Download
 
@@ -135,7 +157,8 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code
 - [x] Choice of speech models
 - [x] Free local AI summaries
 - [ ] Notarized releases
-- [ ] iOS companion app
+- [x] iOS app
+- [ ] iOS keyboard for dictating into other apps
 
 ## Acknowledgements
 

@@ -1,0 +1,3 @@
+Signing.local.xcconfig
+*.xcodeproj/
+build/

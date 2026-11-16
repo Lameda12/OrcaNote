@@ -22,8 +22,6 @@ public enum AudioRecorderError: LocalizedError, Equatable {
     }
 }
 
-public enum AudioSource: String, Sendable { case mic, system }
-
 public final class AudioRecorder: NSObject, SCStreamDelegate, SCStreamOutput, @unchecked Sendable {
     public static let shared = AudioRecorder()
     

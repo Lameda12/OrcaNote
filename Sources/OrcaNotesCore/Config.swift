@@ -7,6 +7,7 @@ public class Config {
     public let notesDirectory: URL
     
     public init() {
+        defer { Secrets.groqKeyProvider = { Config.shared.groqApiKey } }
         let envDict = Config.loadEnv()
         
         let key = ProcessInfo.processInfo.environment["GROQ_API_KEY"] ?? envDict["GROQ_API_KEY"]

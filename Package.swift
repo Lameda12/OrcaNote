@@ -4,12 +4,17 @@ import PackageDescription
 let package = Package(
     name: "OrcaNotes",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
         .executable(
             name: "OrcaNotes",
             targets: ["OrcaNotes"]
+        ),
+        .library(
+            name: "OrcaShared",
+            targets: ["OrcaShared"]
         ),
         .library(
             name: "OrcaNotesCore",
@@ -21,8 +26,13 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "OrcaNotesCore",
+            name: "OrcaShared",
             dependencies: [.product(name: "WhisperKit", package: "WhisperKit")],
+            path: "Sources/OrcaShared"
+        ),
+        .target(
+            name: "OrcaNotesCore",
+            dependencies: ["OrcaShared"],
             path: "Sources/OrcaNotesCore"
         ),
         .executableTarget(
@@ -32,7 +42,7 @@ let package = Package(
         ),
         .testTarget(
             name: "OrcaNotesTests",
-            dependencies: ["OrcaNotesCore"],
+            dependencies: ["OrcaNotesCore", "OrcaShared"],
             path: "Tests/OrcaNotesTests"
         )
     ]

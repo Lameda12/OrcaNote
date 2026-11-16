@@ -14,3 +14,18 @@ jobs:
         run: swift build -c release --arch arm64 --arch x86_64
       - name: Test
         run: swift test
+
+  ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: cd iOS && xcodegen generate
+      - name: Build (iOS Simulator, unsigned)
+        run: |
+          cd iOS
+          xcodebuild -project OrcaNotesiOS.xcodeproj -scheme OrcaNotes \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build

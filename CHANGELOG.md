@@ -2,6 +2,19 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- iPhone and iPad app: meeting recording with live captions, on-device transcription, dictation with styles, notes in the Files app.
+- Apple Intelligence (on-device) as a summary provider on iOS 26 and macOS 26.
+- Adaptive speech detection for live captions (works with quiet and noisy microphones).
+
+### Changed
+- Shared logic moved into a platform-neutral `OrcaShared` module.
+- Whisper non-speech tags such as `[silence]` and `(laughs)` are removed from transcripts.
+- Single-source transcripts are now "Timestamped Transcript" without speaker labels.
+- Clearer summary prompt so small models don't copy placeholder text.
+
 ## [1.0.0] - 2026-11-16
 
 ### Added

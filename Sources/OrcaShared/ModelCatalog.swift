@@ -16,14 +16,32 @@ public struct LLMOption: Identifiable, Equatable {
 }
 
 public enum AIProvider: String, CaseIterable, Identifiable {
-    case local, groq, off
+    case local, apple, groq, off
     public var id: String { rawValue }
     public var label: String {
         switch self {
         case .local: return "On-device (Ollama)"
+        case .apple: return "Apple Intelligence (on-device)"
         case .groq: return "Groq (cloud)"
         case .off: return "Off"
         }
+    }
+
+    /// Providers that can work on this platform. Ollama does not run on iOS.
+    public static var supported: [AIProvider] {
+        #if os(iOS)
+        return [.apple, .groq, .off]
+        #else
+        return [.local, .apple, .groq, .off]
+        #endif
+    }
+
+    public static var platformDefault: AIProvider {
+        #if os(iOS)
+        return .apple
+        #else
+        return .local
+        #endif
     }
 }
 

@@ -83,12 +83,15 @@ public struct ModelsCard: View {
 
             // Summaries / polish
             Picker("Summaries & polish", selection: $provider) {
-                ForEach(AIProvider.allCases) { Text($0.label).tag($0) }
+                ForEach(AIProvider.supported) { Text($0.label).tag($0) }
             }
             .onChange(of: provider) { v in Preferences.aiProvider = v; vm.refresh() }
 
             switch provider {
             case .local: localSection
+            case .apple:
+                Text(AppleIntelligence.unavailableReason ?? "Built into macOS 26. Free, private, no download.")
+                    .font(.system(size: 10)).foregroundColor(AppleIntelligence.isAvailable ? .secondary : .orange)
             case .groq:
                 Text(state.hasApiKey ? "Uses Groq Llama 3.3 70B. Transcripts are sent to Groq." : "Add a Groq key below to use the cloud.")
                     .font(.system(size: 10)).foregroundColor(state.hasApiKey ? .secondary : .orange)

@@ -1,0 +1,51 @@
+name: OrcaNotesiOS
+options:
+  bundleIdPrefix: com.orcanotes
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+packages:
+  Orca:
+    path: ..
+configs:
+  Debug: debug
+  Release: release
+targets:
+  OrcaNotes:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+      - Resources
+    dependencies:
+      - package: Orca
+        product: OrcaShared
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleDisplayName: OrcaNotes
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSMicrophoneUsageDescription: OrcaNotes uses the microphone to transcribe your dictation and meetings on this device.
+        UIBackgroundModes: [audio]
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        PRODUCT_NAME: OrcaNotes
+        PRODUCT_BUNDLE_IDENTIFIER: com.orcanotes.ios
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES

@@ -1,5 +1,6 @@
 import XCTest
 @testable import OrcaNotesCore
+@testable import OrcaShared
 
 final class ModelTests: XCTestCase {
     func testIsInstalledMatchesTags() {

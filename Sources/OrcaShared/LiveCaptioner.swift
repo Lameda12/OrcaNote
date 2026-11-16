@@ -33,11 +33,36 @@ public enum CaptionLogic {
         return Double(wa.intersection(wb).count) / Double(wa.count) >= 0.7
     }
 
+    /// Removes Whisper's non-speech tags such as [silence], [BLANK_AUDIO], (music).
+    public static func stripTags(_ text: String) -> String {
+        text.replacingOccurrences(of: #"\[[^\]]*\]|\((?i:[^)]*(?:silence|music|blank|noise|inaudible|laugh|applause|cough|sigh|breath)[^)]*)\)"#,
+                                  with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Minimum level that can count as speech, whatever the room.
+    public static let absoluteSpeechFloor: Float = 0.0015
+
+    /// Tracks background noise: drops quickly to quieter levels, rises slowly so speech doesn't inflate it.
+    public static func updateNoiseFloor(_ floor: Float, blockRMS r: Float) -> Float {
+        guard r > 0 else { return floor }
+        return r < floor ? r : floor * 0.995 + r * 0.005
+    }
+
+    /// Speech must be well above the room's noise floor (adapts to quiet and loud mics).
+    public static func speechThreshold(noiseFloor: Float) -> Float {
+        max(absoluteSpeechFloor, noiseFloor * 3)
+    }
+
     /// Markdown transcript with speaker labels.
+    /// Speaker labels are only shown when there is more than one source (e.g. You and Them on a Mac call).
     public static func markdown(_ lines: [CaptionLine]) -> String {
-        lines.map { l in
+        let labelled = Set(lines.map(\.speaker)).count > 1
+        return lines.map { l in
             let m = Int(l.offset) / 60, sec = Int(l.offset) % 60
-            return String(format: "**%@** [%02d:%02d]: %@", l.speaker, m, sec, l.text)
+            let stamp = String(format: "[%02d:%02d]", m, sec)
+            return labelled ? "**\(l.speaker)** \(stamp): \(l.text)" : "\(stamp) \(l.text)"
         }.joined(separator: "\n\n")
     }
 }
@@ -53,7 +78,7 @@ public final class LiveCaptioner: ObservableObject {
 
     private let rate = 16000
     private let minChunk = 3 * 16000, maxChunk = 12 * 16000, tail = 9600 // 0.6 s
-    private let speechRMS: Float = 0.008
+    private var noiseFloor: [AudioSource: Float] = [:]
     private var buffers: [AudioSource: [Float]] = [.mic: [], .system: []]
     private var consumed: [AudioSource: Int] = [.mic: 0, .system: 0]
     private var chain: Task<Void, Never>?
@@ -65,21 +90,21 @@ public final class LiveCaptioner: ObservableObject {
         lines = []
         buffers = [.mic: [], .system: []]
         consumed = [.mic: 0, .system: 0]
+        noiseFloor = [.mic: 0.001, .system: 0.001]
         startedAt = Date()
         isActive = Preferences.useLocalSTT
         guard isActive else { return }
         LocalTranscriber.shared.prepare()
-        AudioRecorder.shared.sampleHandler = { [weak self] source, samples in
-            Task { @MainActor in self?.append(source, samples) }
-        }
     }
 
-    private func append(_ source: AudioSource, _ samples: [Float]) {
+    /// Feed 16 kHz mono samples from any recorder.
+    public func append(_ source: AudioSource, _ samples: [Float]) {
         guard isActive else { return }
         buffers[source, default: []].append(contentsOf: samples)
+        noiseFloor[source] = CaptionLogic.updateNoiseFloor(noiseFloor[source] ?? 0.001, blockRMS: CaptionLogic.rms(samples[...]))
         let buf = buffers[source]!
         guard buf.count >= minChunk else { return }
-        let quietTail = CaptionLogic.rms(buf.suffix(tail)) < speechRMS
+        let quietTail = CaptionLogic.rms(buf.suffix(tail)) < threshold(source)
         if quietTail || buf.count >= maxChunk { flush(source) }
     }
 
@@ -88,7 +113,7 @@ public final class LiveCaptioner: ObservableObject {
         buffers[source] = []
         let offset = TimeInterval(consumed[source] ?? 0) / TimeInterval(rate)
         consumed[source, default: 0] += chunk.count
-        guard CaptionLogic.rms(chunk[...]) >= speechRMS else { return }
+        guard hasSpeech(chunk, threshold(source)) else { return }
 
         let previous = chain
         chain = Task { [weak self] in
@@ -96,6 +121,17 @@ public final class LiveCaptioner: ObservableObject {
             let text = await LocalTranscriber.shared.transcribe(samples: chunk)
             await MainActor.run { self?.add(source, text, offset) }
         }
+    }
+
+    private func threshold(_ source: AudioSource) -> Float {
+        CaptionLogic.speechThreshold(noiseFloor: noiseFloor[source] ?? 0.001)
+    }
+
+    /// True when the loudest 10% of 100 ms frames clear the speech threshold.
+    private func hasSpeech(_ chunk: [Float], _ threshold: Float) -> Bool {
+        guard !chunk.isEmpty else { return false }
+        let frames = stride(from: 0, to: chunk.count, by: 1600).map { CaptionLogic.rms(chunk[$0..<min($0 + 1600, chunk.count)]) }.sorted()
+        return frames[Int(Double(frames.count - 1) * 0.9)] >= threshold
     }
 
     private func add(_ source: AudioSource, _ text: String, _ offset: TimeInterval) {
@@ -109,7 +145,6 @@ public final class LiveCaptioner: ObservableObject {
     /// Flushes remaining audio, waits for pending work, returns the speaker transcript (nil if empty).
     public func finish() async -> String? {
         guard isActive else { return nil }
-        AudioRecorder.shared.sampleHandler = nil
         flush(.mic); flush(.system)
         await chain?.value
         isActive = false

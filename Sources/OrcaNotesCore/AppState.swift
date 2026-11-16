@@ -108,6 +108,9 @@ public final class AppState: ObservableObject {
                 try await AudioRecorder.shared.startRecording()
                 self.isRecording = true
                 LiveCaptioner.shared.start()
+                AudioRecorder.shared.sampleHandler = { source, samples in
+                    Task { @MainActor in LiveCaptioner.shared.append(source, samples) }
+                }
                 self.elapsedSeconds = 0
                 self.statusMessage = "Recording meeting audio (System + Mic)..."
                 
@@ -134,10 +137,11 @@ public final class AppState: ObservableObject {
         Task {
             do {
                 let (audioURL, duration) = try await AudioRecorder.shared.stopRecording()
+                AudioRecorder.shared.sampleHandler = nil
                 let speakerTranscript = await LiveCaptioner.shared.finish()
                 self.statusMessage = {
                     switch Preferences.aiProvider {
-                    case .local: return "Summarizing on this Mac…"
+                    case .local, .apple: return "Summarizing on this Mac…"
                     case .groq: return "Summarizing with Groq…"
                     case .off: return "Saving note…"
                     }

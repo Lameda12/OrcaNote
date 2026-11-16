@@ -1,29 +1,5 @@
 import Foundation
 
-public enum PipelineError: LocalizedError, Equatable {
-    case apiKeyMissing
-    case transcriptionFailed(String)
-    case summaryFailed(String)
-    case writeFailed(String)
-    case fileTooLarge(Int64)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .apiKeyMissing:
-            return "GROQ_API_KEY is missing. Please set GROQ_API_KEY in .env or ~/.orca.env (Get a key at console.groq.com)."
-        case .transcriptionFailed(let msg):
-            return "Groq Whisper transcription failed: \(msg)"
-        case .summaryFailed(let msg):
-            return "Groq LLM summary generation failed: \(msg)"
-        case .writeFailed(let msg):
-            return "Failed to save meeting notes to disk: \(msg)"
-        case .fileTooLarge(let bytes):
-            let mb = Double(bytes) / (1024 * 1024)
-            return String(format: "Audio file is %.1f MB, exceeding Groq's 25 MB limit.", mb)
-        }
-    }
-}
-
 public final class MeetingPipeline {
     public static let shared = MeetingPipeline()
     
@@ -113,49 +89,8 @@ public final class MeetingPipeline {
         throw PipelineError.transcriptionFailed("Unable to decode response.")
     }
     
-    static let summaryPrompt = """
-    You are an executive meeting assistant. Analyze the meeting transcript and write structured notes.
-
-    Strict output structure:
-
-    ## Executive Summary
-    - 3 to 5 bullets covering context, key updates, blockers, decisions and the main takeaway
-
-    ## Decisions Made
-    - Every explicit agreement or confirmed decision
-
-    ## Action Items
-    - [ ] **Owner or role**: Task (deadline or context if mentioned)
-
-    No preamble or greetings. Output only the Markdown.
-    """
-
-    /// Summarizes with the provider the user picked. Long transcripts are summarized in parts first.
-    /// Never throws: on failure the note still saves, with a short explanation instead of a summary.
     public func summarize(transcript: String) async -> String {
-        guard Preferences.aiProvider != .off else {
-            return "## Summary\n\n_AI summaries are turned off. The full transcript is below._"
-        }
-        do {
-            // Local models have a smaller context window, so use smaller parts.
-            let limit = Preferences.aiProvider == .local ? 12_000 : 40_000
-            let parts = LLMClient.chunk(transcript, limit: limit)
-            var material = transcript
-            if parts.count > 1 {
-                var notes: [String] = []
-                for (i, part) in parts.enumerated() {
-                    let n = try await LLMClient.chat(
-                        system: "Summarize this part of a meeting transcript as concise bullet notes. Keep names, numbers, decisions and action items. No preamble.",
-                        user: "Part \(i + 1) of \(parts.count):\n\n\(part)", maxTokens: 700)
-                    notes.append(n)
-                }
-                material = notes.joined(separator: "\n\n")
-            }
-            let label = parts.count > 1 ? "Notes from each part of the meeting" : "Meeting Transcript"
-            return try await LLMClient.chat(system: MeetingPipeline.summaryPrompt, user: "\(label):\n\n\(material)", timeout: 300)
-        } catch {
-            return "## Summary\n\n_No summary: \(error.localizedDescription) The full transcript is below._"
-        }
+        await Summarizer.summarize(transcript: transcript)
     }
 
     public static func formatMarkdownDocument(dateStr: String, timeStr: String, durationStr: String, audioFileName: String, audioFilePath: String, summaryMarkdown: String, transcript: String, speakerTranscript: String? = nil) -> String {
@@ -174,7 +109,7 @@ public final class MeetingPipeline {
         ## Full Transcript
         
         \(transcript)
-        \(speakerTranscript.map { "\n---\n\n## Transcript by Speaker\n\n" + $0 } ?? "")
+        \(speakerTranscript.map { "\n---\n\n## Timestamped Transcript\n\n" + $0 } ?? "")
         """
     }
     
