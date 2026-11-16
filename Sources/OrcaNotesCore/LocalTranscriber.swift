@@ -16,28 +16,44 @@ public final class LocalTranscriber: ObservableObject {
     @Published public private(set) var status: Status = .notLoaded
     @Published public private(set) var downloadProgress: Double = 0
 
-    public static let modelName = "openai_whisper-base.en"
+    @Published public private(set) var loadedModel: String?
     private var kit: WhisperKit?
     private var loadTask: Task<Void, Never>?
 
     public init() {}
 
+    /// Switch to the model chosen in Preferences (downloads it if needed).
+    public func switchModel() {
+        guard loadedModel != Preferences.speechModel else { return }
+        loadTask?.cancel()
+        loadTask = nil
+        kit = nil
+        loadedModel = nil
+        prepare()
+    }
+
     public func prepare() {
         guard kit == nil, loadTask == nil else { return }
+        let variant = Preferences.speechModel
+        downloadProgress = 0
         status = .loading("Downloading speech model…")
         loadTask = Task { [weak self] in
             do {
-                let folder = try await WhisperKit.download(variant: LocalTranscriber.modelName) { p in
+                let folder = try await WhisperKit.download(variant: variant) { p in
                     Task { @MainActor in self?.downloadProgress = p.fractionCompleted }
                 }
                 self?.status = .loading("Loading speech model…")
                 let config = WhisperKitConfig(modelFolder: folder.path, verbose: false, prewarm: true, load: true, download: false)
-                self?.kit = try await WhisperKit(config)
+                let kit = try await WhisperKit(config)
+                guard !Task.isCancelled else { return }
+                self?.kit = kit
+                self?.loadedModel = variant
                 self?.status = .ready
             } catch {
+                guard !Task.isCancelled else { return }
                 self?.status = .failed(error.localizedDescription)
             }
-            self?.loadTask = nil
+            if !Task.isCancelled { self?.loadTask = nil }
         }
     }
 

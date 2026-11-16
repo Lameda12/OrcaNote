@@ -13,6 +13,6 @@ Report privately through [GitHub Security Advisories](https://github.com/Lameda1
 ## Scope and data handling
 
 - Audio and transcripts are stored locally (default `~/MeetingNotes`).
-- Speech recognition runs on-device by default. Network calls happen only when you add a Groq key and use cloud features, plus the one-time speech model download from Hugging Face.
+- Speech recognition and AI summaries run on-device by default. Network calls: one-time model downloads (Whisper from Hugging Face, LLMs through Ollama), requests to Ollama on `127.0.0.1:11434`, and Groq only when you pick it as the provider.
 - The Groq API key is stored in `~/.orca.env` on your Mac. Treat that file as a secret.
-- Dictated text is sent to a cloud provider only if **Polish with Groq** is enabled.
+- Dictated text is sent to the cloud only if **AI polish** is on and the provider is Groq.

@@ -12,10 +12,23 @@ public enum Preferences {
         get { d.object(forKey: "dictationEnabled") as? Bool ?? true }
         set { d.set(newValue, forKey: "dictationEnabled") }
     }
-    /// Off by default: dictated text stays on this Mac unless the user opts in.
-    public static var cloudCleanup: Bool {
-        get { d.bool(forKey: "cloudCleanup") }
-        set { d.set(newValue, forKey: "cloudCleanup") }
+    /// AI rewrite of dictated text. Off by default (adds latency).
+    public static var aiPolish: Bool {
+        get { d.bool(forKey: "aiPolish") }
+        set { d.set(newValue, forKey: "aiPolish") }
+    }
+    /// Which AI writes meeting summaries and polish. Defaults to on-device.
+    public static var aiProvider: AIProvider {
+        get { AIProvider(rawValue: d.string(forKey: "aiProvider") ?? "") ?? .local }
+        set { d.set(newValue.rawValue, forKey: "aiProvider") }
+    }
+    public static var localLLM: String {
+        get { d.string(forKey: "localLLM") ?? ModelCatalog.defaultLLM }
+        set { d.set(newValue, forKey: "localLLM") }
+    }
+    public static var speechModel: String {
+        get { d.string(forKey: "speechModel") ?? ModelCatalog.defaultSpeechModel }
+        set { d.set(newValue, forKey: "speechModel") }
     }
     public static var defaultStyle: WritingStyle {
         get { WritingStyle(rawValue: d.string(forKey: "defaultStyle") ?? "") ?? .clean }

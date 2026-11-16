@@ -47,11 +47,7 @@ public final class MeetingPipeline {
             throw PipelineError.transcriptionFailed("Empty transcript. Check if audio had audible speech.")
         }
 
-        var summaryMarkdown = "## Summary\n\n_Add a Groq API key in settings to generate an AI summary. The transcript below was created on this Mac._"
-        if let apiKey {
-            do { summaryMarkdown = try await generateSummaryWithGroq(transcript: transcript, apiKey: apiKey) }
-            catch { summaryMarkdown = "## Summary\n\n_Summary failed: \(error.localizedDescription)_" }
-        }
+        let summaryMarkdown = await summarize(transcript: transcript)
 
         let noteURL = try saveMeetingNote(audioURL: audioURL, duration: duration, summaryMarkdown: summaryMarkdown, transcript: transcript, speakerTranscript: speakerTranscript)
         exportTranscript(baseURL: noteURL.deletingPathExtension(), transcript: speakerTranscript ?? transcript, duration: duration)
@@ -69,33 +65,6 @@ public final class MeetingPipeline {
         if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]) {
             try? data.write(to: baseURL.appendingPathExtension("json"))
         }
-    }
-
-    /// Optional cloud rewrite of already-cleaned dictation text. Only called when the user opts in.
-    public func polishWithGroq(_ text: String, style: WritingStyle, apiKey: String) async throws -> String {
-        var request = URLRequest(url: groqChatURL)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 8
-        let payload: [String: Any] = [
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                ["role": "system", "content": "You edit dictated text. \(style.llmInstruction) Output only the edited text, no commentary."],
-                ["role": "user", "content": text]
-            ],
-            "temperature": 0.1,
-            "max_tokens": 1024
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let msg = (json["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any],
-              let out = msg["content"] as? String, !out.isEmpty else {
-            throw PipelineError.summaryFailed("Polish request failed.")
-        }
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func transcribeWithGroq(audioURL: URL, apiKey: String) async throws -> String {
@@ -144,67 +113,51 @@ public final class MeetingPipeline {
         throw PipelineError.transcriptionFailed("Unable to decode response.")
     }
     
-    public func generateSummaryWithGroq(transcript: String, apiKey: String) async throws -> String {
-        var request = URLRequest(url: groqChatURL)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60
-        
-        let systemPrompt = """
-        You are an elite, executive-level meeting assistant. Analyze the provided meeting transcript and generate structured meeting notes with high precision.
-        
-        Strict output structure:
-        
-        ## Executive Summary
-        - (Point 1: Core context or milestone discussed)
-        - (Point 2: Key argument or update)
-        - (Point 3: Main blocker or strategic direction)
-        - (Point 4: Technical or business decision point)
-        - (Point 5: Critical overall takeaway)
-        
-        ## Decisions Made
-        - [List all explicit agreements and confirmed decisions]
-        
-        ## Action Items
-        - [ ] **[Owner Name or Role]**: Task description (Deadline / Context if mentioned)
-        
-        Do not add preamble or conversational greetings. Output only the structured markdown.
-        """
-        
-        let payload: [String: Any] = [
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": "Meeting Transcript:\n\n\(transcript)"]
-            ],
-            "temperature": 0.2,
-            "max_tokens": 2048
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw PipelineError.summaryFailed("Invalid network response from LLM.")
+    static let summaryPrompt = """
+    You are an executive meeting assistant. Analyze the meeting transcript and write structured notes.
+
+    Strict output structure:
+
+    ## Executive Summary
+    - 3 to 5 bullets covering context, key updates, blockers, decisions and the main takeaway
+
+    ## Decisions Made
+    - Every explicit agreement or confirmed decision
+
+    ## Action Items
+    - [ ] **Owner or role**: Task (deadline or context if mentioned)
+
+    No preamble or greetings. Output only the Markdown.
+    """
+
+    /// Summarizes with the provider the user picked. Long transcripts are summarized in parts first.
+    /// Never throws: on failure the note still saves, with a short explanation instead of a summary.
+    public func summarize(transcript: String) async -> String {
+        guard Preferences.aiProvider != .off else {
+            return "## Summary\n\n_AI summaries are turned off. The full transcript is below._"
         }
-        
-        if httpResponse.statusCode != 200 {
-            let errorBody = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
-            throw PipelineError.summaryFailed("Groq LLM Error (\(httpResponse.statusCode)): \(errorBody)")
+        do {
+            // Local models have a smaller context window, so use smaller parts.
+            let limit = Preferences.aiProvider == .local ? 12_000 : 40_000
+            let parts = LLMClient.chunk(transcript, limit: limit)
+            var material = transcript
+            if parts.count > 1 {
+                var notes: [String] = []
+                for (i, part) in parts.enumerated() {
+                    let n = try await LLMClient.chat(
+                        system: "Summarize this part of a meeting transcript as concise bullet notes. Keep names, numbers, decisions and action items. No preamble.",
+                        user: "Part \(i + 1) of \(parts.count):\n\n\(part)", maxTokens: 700)
+                    notes.append(n)
+                }
+                material = notes.joined(separator: "\n\n")
+            }
+            let label = parts.count > 1 ? "Notes from each part of the meeting" : "Meeting Transcript"
+            return try await LLMClient.chat(system: MeetingPipeline.summaryPrompt, user: "\(label):\n\n\(material)", timeout: 300)
+        } catch {
+            return "## Summary\n\n_No summary: \(error.localizedDescription) The full transcript is below._"
         }
-        
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw PipelineError.summaryFailed("Failed to parse Groq LLM JSON response.")
-        }
-        
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    
+
     public static func formatMarkdownDocument(dateStr: String, timeStr: String, durationStr: String, audioFileName: String, audioFilePath: String, summaryMarkdown: String, transcript: String, speakerTranscript: String? = nil) -> String {
         return """
         # Meeting Notes — \(dateStr) \(timeStr)

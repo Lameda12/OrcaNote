@@ -29,8 +29,10 @@
 | **Per-app writing styles** | Verbatim, Clean, Casual or Professional, chosen by the frontmost app. Mail gets Professional, Messages and Slack get Casual, Xcode and Terminal stay Verbatim. |
 | **Meeting recording** | Captures your microphone and system audio (Zoom, Meet, Teams, browser tabs) with no virtual audio cable. |
 | **Live captions** | See the conversation as it happens, labelled **You** (mic) and **Them** (system audio). |
-| **Structured notes** | Optional AI summary with decisions and action items, saved as Markdown with `.txt` and `.json` transcripts. |
-| **Privacy first** | No account, no telemetry, no cloud storage. Cloud features (Groq) are opt-in and off by default for dictation. |
+| **Choose your speech model** | Six free Whisper models, from Tiny (75 MB, fastest) to Large v3 Turbo (632 MB, 99 languages). Switch in settings; the new model downloads automatically. |
+| **Free local AI summaries** | Meeting summaries, decisions and action items written on your Mac by open models (Llama 3.2, Qwen 2.5, Gemma 3) through [Ollama](https://ollama.com). No key, no cloud. |
+| **Structured notes** | Saved as Markdown with `.txt` and `.json` transcripts. |
+| **Privacy first** | No account, no telemetry, no cloud storage. Everything runs on-device by default; Groq is an optional cloud alternative. |
 | **Universal app** | One build for Apple Silicon and Intel Macs. |
 
 ## Install
@@ -67,11 +69,41 @@ make test     # runs the test suite
 
 Ad-hoc signed builds can lose the Accessibility grant after each rebuild. Re-grant it in **System Settings → Privacy & Security**.
 
-## Optional: Groq
+## Free AI models
 
-Local transcription needs no key. Add a free [Groq API key](https://console.groq.com/keys) to get AI meeting summaries, cloud transcription, or optional text polish. Paste it in the app, or copy `.env.example` to `.env`.
+Everything below is free and open, and runs on your Mac. Open **⚙︎ Settings → Free AI Models** in the menu bar popover.
 
-Dictated text is only sent to Groq if you switch on **Polish with Groq**.
+### Speech-to-text (built in)
+
+| Model | Size | Languages |
+|---|---|---|
+| Tiny | 75 MB | English |
+| Base (default) | 145 MB | English |
+| Small | 480 MB | English |
+| Base | 145 MB | 99 languages |
+| Small | 480 MB | 99 languages |
+| Large v3 Turbo | 632 MB | 99 languages, most accurate |
+
+OpenAI Whisper (MIT license), converted to Core ML by [Argmax](https://huggingface.co/argmaxinc/whisperkit-coreml). Downloaded once from Hugging Face, then works offline.
+
+### Summaries and AI polish (via Ollama)
+
+1. Install [Ollama](https://ollama.com/download) (free) and open it.
+2. In OrcaNotes settings, set **Summaries & polish** to **On-device (Ollama)**.
+3. Pick a model and click **Download**:
+
+| Model | Size | Notes |
+|---|---|---|
+| Llama 3.2 3B (default) | 2.0 GB | Good balance for most Macs |
+| Qwen 2.5 3B | 1.9 GB | Strong multilingual |
+| Gemma 3 4B | 3.3 GB | |
+| Qwen 2.5 7B | 4.7 GB | Best quality, 16 GB RAM recommended |
+
+Any other model you already have in Ollama also shows up. Long meetings are summarized in parts so they fit a small model's context window.
+
+### Optional: Groq (cloud)
+
+Prefer the cloud? Choose **Groq (cloud)** and paste a free [Groq API key](https://console.groq.com/keys), or copy `.env.example` to `.env`. Transcripts are then sent to Groq for summaries.
 
 ## How it works
 
@@ -81,7 +113,10 @@ Sources/
   OrcaNotesCore/    all logic: recording, transcription, cleanup, UI
     AudioRecorder       mic + ScreenCaptureKit capture
     DictationController push-to-talk hotkey, recording, insertion
-    LocalTranscriber    WhisperKit wrapper
+    LocalTranscriber    WhisperKit wrapper, model switching
+    ModelCatalog        free speech models and local LLMs
+    LLMClient           Ollama (local) and Groq (cloud) chat
+    ModelsCard          model settings UI and downloads
     LiveCaptioner       chunking, captions, speaker labels
     TextCleanup         offline cleanup rules and per-app styles
     MeetingPipeline     transcript, summary, export
@@ -97,13 +132,15 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code
 
 - [ ] Transcript editor and speaker renaming
 - [ ] Re-transcribe saved meetings in another language
-- [ ] Choice of speech models
+- [x] Choice of speech models
+- [x] Free local AI summaries
 - [ ] Notarized releases
 - [ ] iOS companion app
 
 ## Acknowledgements
 
 - [WhisperKit](https://github.com/argmaxinc/WhisperKit) by Argmax for on-device speech recognition.
+- [Ollama](https://ollama.com) and the open model authors (Meta Llama, Alibaba Qwen, Google Gemma) for local AI.
 - [Groq](https://groq.com) for optional cloud inference.
 - Inspired by the product idea behind [FluidVoice](https://github.com/altic-dev/FluidVoice). OrcaNotes is an independent, clean-room project: it contains no FluidVoice code and is not affiliated with or endorsed by its authors.
 

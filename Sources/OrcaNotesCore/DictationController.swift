@@ -94,11 +94,14 @@ public final class DictationController: ObservableObject {
 }
 
 public enum DictationPipeline {
-    /// Offline rules by default; optional Groq polish only when the user opted in and a key exists.
+    /// Offline rules always; optional AI rewrite (local Ollama or Groq) when the user turns on AI polish.
     public static func polish(_ raw: String, style: WritingStyle) async -> String {
         let local = TextCleanup.clean(raw, style: style)
-        guard style != .verbatim, Preferences.cloudCleanup, let key = Config.shared.groqApiKey else { return local }
-        return (try? await MeetingPipeline.shared.polishWithGroq(local, style: style, apiKey: key)) ?? local
+        guard style != .verbatim, Preferences.aiPolish, Preferences.aiProvider != .off else { return local }
+        let system = "You edit dictated text. \(style.llmInstruction) Output only the edited text, with no preamble or commentary."
+        guard let out = try? await LLMClient.chat(system: system, user: local, timeout: 15, maxTokens: 512),
+              LLMClient.acceptPolish(original: local, output: out) else { return local }
+        return out
     }
 }
 

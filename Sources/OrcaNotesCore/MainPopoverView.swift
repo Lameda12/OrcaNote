@@ -34,10 +34,10 @@ public struct MainPopoverView: View {
                 }) {
                     Image(systemName: state.isShowingSettings ? "xmark.circle.fill" : "gearshape.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(state.isShowingSettings ? .secondary : (state.hasApiKey ? .secondary : .orange))
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Settings & API Key")
+                .help("Models & settings")
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -48,7 +48,9 @@ public struct MainPopoverView: View {
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
-                    if !state.hasApiKey || state.isShowingSettings {
+                    if state.isShowingSettings {
+                        ModelsCard()
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         apiKeyCard
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
@@ -100,7 +102,7 @@ public struct MainPopoverView: View {
             .background(Color(NSColor.windowBackgroundColor).opacity(0.5))
         }
         .frame(width: 330)
-        .frame(maxHeight: 460)
+        .frame(maxHeight: 600)
         .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
     }
     
@@ -110,7 +112,7 @@ public struct MainPopoverView: View {
                 Image(systemName: "key.fill")
                     .foregroundColor(.orange)
                     .font(.system(size: 12))
-                Text("Groq API Key Setup")
+                Text("Groq API Key (optional, cloud)")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
                 Link("Get Free Key ↗", destination: URL(string: "https://console.groq.com/keys")!)
@@ -180,7 +182,7 @@ public struct MainPopoverView: View {
                         ProgressView()
                             .scaleEffect(0.8)
                             .frame(width: 24, height: 24)
-                        Text("Processing with Groq...")
+                        Text("Processing...")
                             .font(.system(size: 13, weight: .bold))
                     } else {
                         Image(systemName: "record.circle")
@@ -214,7 +216,7 @@ public struct MainPopoverView: View {
     @ObservedObject private var stt = LocalTranscriber.shared
     @State private var localSTT = Preferences.useLocalSTT
     @State private var dictationOn = Preferences.dictationEnabled
-    @State private var cloudCleanup = Preferences.cloudCleanup
+    @State private var aiPolish = Preferences.aiPolish
     @State private var style = Preferences.defaultStyle
 
     @ObservedObject private var captions = LiveCaptioner.shared
@@ -260,7 +262,7 @@ public struct MainPopoverView: View {
                 case .ready:
                     Text("Speech model ready").font(.system(size: 10)).foregroundColor(.secondary)
                 case .notLoaded:
-                    Text("Model downloads on first use (~150 MB)").font(.system(size: 10)).foregroundColor(.secondary)
+                    Text("Model downloads on first use. Change it in ⚙︎ settings.").font(.system(size: 10)).foregroundColor(.secondary)
                 }
             }
             Picker("Default style", selection: $style) {
@@ -269,9 +271,8 @@ public struct MainPopoverView: View {
             .onChange(of: style) { Preferences.defaultStyle = $0 }
             Text("Mail/Outlook → Professional, Messages/Slack → Casual, Xcode/Terminal → Verbatim.")
                 .font(.system(size: 10)).foregroundColor(.secondary)
-            Toggle("Polish with Groq (sends text to cloud)", isOn: $cloudCleanup)
-                .disabled(!state.hasApiKey)
-                .onChange(of: cloudCleanup) { Preferences.cloudCleanup = $0 }
+            Toggle("AI polish (uses the summary model, slower)", isOn: $aiPolish)
+                .onChange(of: aiPolish) { Preferences.aiPolish = $0 }
             if !TextInserter.hasAccessibility {
                 Button("Grant Accessibility (needed to type into apps)") { TextInserter.requestAccessibility() }
                     .font(.system(size: 11))

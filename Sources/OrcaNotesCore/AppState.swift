@@ -99,7 +99,7 @@ public final class AppState: ObservableObject {
     public func startRecording() {
         guard hasApiKey || Preferences.useLocalSTT else {
             self.isShowingSettings = true
-            self.statusMessage = "Please save your Groq API key first."
+            self.statusMessage = "Turn on on-device transcription or add a Groq key."
             return
         }
         
@@ -135,7 +135,13 @@ public final class AppState: ObservableObject {
             do {
                 let (audioURL, duration) = try await AudioRecorder.shared.stopRecording()
                 let speakerTranscript = await LiveCaptioner.shared.finish()
-                self.statusMessage = hasApiKey ? "Summarizing with Groq Llama 3.3..." : "Saving note..."
+                self.statusMessage = {
+                    switch Preferences.aiProvider {
+                    case .local: return "Summarizing on this Mac…"
+                    case .groq: return "Summarizing with Groq…"
+                    case .off: return "Saving note…"
+                    }
+                }()
                 
                 let noteURL = try await MeetingPipeline.shared.processMeeting(audioURL: audioURL, duration: duration, speakerTranscript: speakerTranscript)
                 
