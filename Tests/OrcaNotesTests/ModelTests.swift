@@ -30,6 +30,18 @@ final class ModelTests: XCTestCase {
         XCTAssertTrue(parts.allSatisfy { $0.count <= 1000 })
         XCTAssertTrue(parts.joined().contains("roadmap"))
     }
+    func testStripThinking() {
+        XCTAssertEqual(OnDeviceLLM.stripThinking("<think>\nplan it\n</think>\n\n## Summary\n- A"), "## Summary\n- A")
+        XCTAssertEqual(OnDeviceLLM.stripThinking("No thinking here."), "No thinking here.")
+        XCTAssertEqual(OnDeviceLLM.stripThinking("Answer <think>ran out of tokens"), "Answer")
+    }
+    func testPhoneCatalog() {
+        XCTAssertNotNil(ModelCatalog.phoneLLM(ModelCatalog.defaultPhoneLLM))
+        XCTAssertTrue(ModelCatalog.phoneLLMs.allSatisfy { $0.sizeGB < 2 })
+        #if os(macOS)
+        XCTAssertFalse(AIProvider.supported.contains(.openModel))
+        #endif
+    }
     func testAcceptPolish() {
         XCTAssertTrue(LLMClient.acceptPolish(original: "see you at five", output: "See you at five."))
         XCTAssertFalse(LLMClient.acceptPolish(original: "see you", output: "Here is the edited text: See you."))

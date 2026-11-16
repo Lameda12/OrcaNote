@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Install Metal Toolchain (for MLX)
+        run: xcodebuild -downloadComponent MetalToolchain
       - name: Generate project
         run: cd iOS && xcodegen generate
       - name: Build (iOS Simulator, unsigned)

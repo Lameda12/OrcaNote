@@ -141,7 +141,7 @@ public final class AppState: ObservableObject {
                 let speakerTranscript = await LiveCaptioner.shared.finish()
                 self.statusMessage = {
                     switch Preferences.aiProvider {
-                    case .local, .apple: return "Summarizing on this Mac…"
+                    case .local, .apple, .openModel: return "Summarizing on this Mac…"
                     case .groq: return "Summarizing with Groq…"
                     case .off: return "Saving note…"
                     }

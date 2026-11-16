@@ -203,6 +203,33 @@ struct MarkdownLine: View {
     }
 }
 
+extension SettingsView {
+    @ViewBuilder var openModelSection: some View {
+        Picker("Model", selection: $phoneLLM) {
+            ForEach(ModelCatalog.phoneLLMs) { m in
+                Text("\(phoneModels.isInstalled(m.id) ? "✓ " : "")\(m.label) · \(String(format: "%.2f", m.sizeGB)) GB").tag(m.id)
+            }
+        }
+        .onChange(of: phoneLLM) { _, v in Preferences.phoneLLM = v }
+        if let option = ModelCatalog.phoneLLM(phoneLLM) {
+            if phoneModels.downloading == option.id {
+                ProgressView(value: phoneModels.progress) { Text("Downloading \(Int(phoneModels.progress * 100))%") }
+            } else if phoneModels.isInstalled(option.id) {
+                Label("Downloaded, runs on this device", systemImage: "checkmark.circle").foregroundStyle(.green)
+            } else {
+                Button("Download \(option.label) (\(String(format: "%.2f", option.sizeGB)) GB)") { phoneModels.download(option.id) }
+                    .disabled(phoneModels.downloading != nil)
+            }
+            Text("License: \(option.license). Free to use; downloaded once from Hugging Face, then works offline. Wi-Fi recommended.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        if let e = phoneModels.error { Text(e).font(.footnote).foregroundStyle(.orange) }
+        #if targetEnvironment(simulator)
+        Text("Open models run only on a real iPhone or iPad, not in the Simulator.").font(.footnote).foregroundStyle(.orange)
+        #endif
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject private var stt = LocalTranscriber.shared
     @State private var speechModel = Preferences.speechModel
@@ -211,6 +238,8 @@ struct SettingsView: View {
     @State private var aiPolish = Preferences.aiPolish
     @State private var groqKey = Keychain.read("groqApiKey") ?? ""
     @State private var keyStatus = ""
+    @State private var phoneLLM = Preferences.phoneLLM
+    @ObservedObject private var phoneModels = PhoneModels.shared
 
     var body: some View {
         NavigationStack {
@@ -242,6 +271,7 @@ struct SettingsView: View {
                         Text(AppleIntelligence.unavailableReason ?? "Free, private, built into iOS. No download.")
                             .font(.footnote).foregroundStyle(AppleIntelligence.isAvailable ? Color.secondary : Color.orange)
                     }
+                    if provider == .openModel { openModelSection }
                     if provider == .groq {
                         SecureField("Groq API key (gsk_…)", text: $groqKey)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -257,6 +287,15 @@ struct SettingsView: View {
                         .onChange(of: aiPolish) { _, v in Preferences.aiPolish = v }
                 } header: { Text("Summaries") } footer: {
                     Text(provider == .groq ? "Transcripts are sent to Groq. The key is stored in the Keychain." : "Everything stays on this device.")
+                }
+
+                if !phoneModels.installed.isEmpty {
+                    Section {
+                        ForEach(ModelCatalog.phoneLLMs.filter { phoneModels.isInstalled($0.id) }) { m in
+                            LabeledContent(m.label, value: String(format: "%.2f GB", m.sizeGB))
+                                .swipeActions { Button("Delete", role: .destructive) { phoneModels.delete(m.id) } }
+                        }
+                    } header: { Text("Downloaded models") } footer: { Text("Swipe left to delete and free space.") }
                 }
 
                 Section("Dictation") {

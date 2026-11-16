@@ -72,6 +72,22 @@ public enum OllamaService {
     }
 }
 
+/// A platform-supplied engine that runs an open model on this device (iOS registers an MLX engine).
+public protocol OnDeviceLLMEngine: Sendable {
+    func respond(system: String, user: String, maxTokens: Int) async throws -> String
+}
+
+public enum OnDeviceLLM {
+    nonisolated(unsafe) public static var engine: (any OnDeviceLLMEngine)?
+
+    /// Removes <think>…</think> reasoning blocks (Qwen3 family), including an unterminated one.
+    public static func stripThinking(_ text: String) -> String {
+        var t = text.replacingOccurrences(of: #"(?s)<think>.*?</think>"#, with: "", options: .regularExpression)
+        if let open = t.range(of: "<think>") { t = String(t[..<open.lowerBound]) }
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 /// One entry point for summaries and polish, whichever provider the user picked.
 public enum LLMClient {
     public static func chat(system: String, user: String, timeout: TimeInterval = 120, maxTokens: Int = 2048) async throws -> String {
@@ -92,6 +108,12 @@ public enum LLMClient {
             return try await OllamaService.chat(model: model, system: system, user: user, timeout: timeout, maxTokens: maxTokens)
         case .apple:
             return try await AppleIntelligence.respond(system: system, user: user)
+        case .openModel:
+            guard let engine = OnDeviceLLM.engine else {
+                throw LLMError.unavailable("Open models are not available in this build.")
+            }
+            let raw = try await engine.respond(system: system, user: user, maxTokens: maxTokens)
+            return OnDeviceLLM.stripThinking(raw)
         case .groq:
             guard let key = Secrets.groqKey else { throw LLMError.unavailable("Add a Groq API key first.") }
             return try await groqChat(system: system, user: user, key: key, timeout: timeout, maxTokens: maxTokens)

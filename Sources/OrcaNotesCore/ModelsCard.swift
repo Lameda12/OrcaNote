@@ -95,6 +95,8 @@ public struct ModelsCard: View {
             case .groq:
                 Text(state.hasApiKey ? "Uses Groq Llama 3.3 70B. Transcripts are sent to Groq." : "Add a Groq key below to use the cloud.")
                     .font(.system(size: 10)).foregroundColor(state.hasApiKey ? .secondary : .orange)
+            case .openModel:
+                EmptyView() // iOS only
             case .off:
                 Text("Notes will contain the transcript without a summary.")
                     .font(.system(size: 10)).foregroundColor(.secondary)

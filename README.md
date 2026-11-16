@@ -42,6 +42,7 @@ The iOS app (in [`iOS/`](iOS)) shares the same core and runs fully on-device:
 - **Meeting mode**: record in-person meetings with live captions, then get an on-device transcript and summary.
 - **Dictate mode**: speak, pick a style, and the cleaned text is copied to the clipboard (or shared).
 - **Apple Intelligence summaries**: free and private on iOS 26 devices that support it; Groq is optional.
+- **Open models on the phone**: download a small open model and summarize with no account and no cloud (see below).
 - Notes are saved as Markdown in **Files → On My iPhone → OrcaNotes**.
 
 iOS does not let apps record other apps' audio or type into other apps, so on iPhone meetings are recorded with the microphone, and dictated text goes to the clipboard.
@@ -50,12 +51,26 @@ Build it:
 
 ```bash
 brew install xcodegen
+xcodebuild -downloadComponent MetalToolchain   # once; needed to build MLX
 cd iOS
 xcodegen generate
 open OrcaNotesiOS.xcodeproj
 ```
 
 To run on a device, create `iOS/Signing.local.xcconfig` (gitignored) with `DEVELOPMENT_TEAM = <your team ID>`.
+
+### Open models on iPhone and iPad
+
+In **Settings → Summaries**, choose **Open model on device**, pick a model and tap **Download**. Models are 4-bit [MLX](https://github.com/ml-explore/mlx-swift-lm) builds from [mlx-community](https://huggingface.co/mlx-community) on Hugging Face. They are stored privately in the app (not in Files, not backed up), and you can swipe to delete them.
+
+| Model | Download | License |
+|---|---|---|
+| Qwen3 1.7B (default) | 0.98 GB | Apache 2.0 |
+| Gemma 3 1B | 0.77 GB | Gemma Terms of Use |
+| Llama 3.2 1B | 0.71 GB | Llama 3.2 Community License |
+| Qwen3.5 2B | 1.75 GB | Apache 2.0, newer phones (8 GB RAM) |
+
+Open models need a real device; MLX does not run in the iOS Simulator. Small models can get details wrong, so review summaries before sharing them.
 
 ## Install (Mac)
 

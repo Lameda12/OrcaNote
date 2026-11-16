@@ -8,9 +8,11 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - iPhone and iPad app: meeting recording with live captions, on-device transcription, dictation with styles, notes in the Files app.
 - Apple Intelligence (on-device) as a summary provider on iOS 26 and macOS 26.
 - Adaptive speech detection for live captions (works with quiet and noisy microphones).
+- Open models on iPhone and iPad (Qwen3 1.7B, Gemma 3 1B, Llama 3.2 1B, Qwen3.5 2B) for summaries through MLX, with in-app download and delete.
 
 ### Changed
 - Shared logic moved into a platform-neutral `OrcaShared` module.
+- WhisperKit upgraded from 0.18 to 1.1.1; the universal Mac build now compiles each architecture separately.
 - Whisper non-speech tags such as `[silence]` and `(laughs)` are removed from transcripts.
 - Single-source transcripts are now "Timestamped Transcript" without speaker labels.
 - Clearer summary prompt so small models don't copy placeholder text.

@@ -55,7 +55,7 @@ public enum Summarizer {
     /// Characters per part; smaller models have smaller context windows.
     public static func chunkLimit(for provider: AIProvider) -> Int {
         switch provider {
-        case .apple: return 6_000
+        case .apple, .openModel: return 6_000
         case .local: return 12_000
         case .groq, .off: return 40_000
         }

@@ -29,6 +29,10 @@ public enum Preferences {
         get { d.string(forKey: "localLLM") ?? ModelCatalog.defaultLLM }
         set { d.set(newValue, forKey: "localLLM") }
     }
+    public static var phoneLLM: String {
+        get { d.string(forKey: "phoneLLM") ?? ModelCatalog.defaultPhoneLLM }
+        set { d.set(newValue, forKey: "phoneLLM") }
+    }
     public static var speechModel: String {
         get { d.string(forKey: "speechModel") ?? ModelCatalog.defaultSpeechModel }
         set { d.set(newValue, forKey: "speechModel") }

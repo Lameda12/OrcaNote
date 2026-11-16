@@ -16,12 +16,13 @@ public struct LLMOption: Identifiable, Equatable {
 }
 
 public enum AIProvider: String, CaseIterable, Identifiable {
-    case local, apple, groq, off
+    case local, apple, openModel, groq, off
     public var id: String { rawValue }
     public var label: String {
         switch self {
         case .local: return "On-device (Ollama)"
         case .apple: return "Apple Intelligence (on-device)"
+        case .openModel: return "Open model on device (Gemma, Qwen, Llama)"
         case .groq: return "Groq (cloud)"
         case .off: return "Off"
         }
@@ -30,7 +31,7 @@ public enum AIProvider: String, CaseIterable, Identifiable {
     /// Providers that can work on this platform. Ollama does not run on iOS.
     public static var supported: [AIProvider] {
         #if os(iOS)
-        return [.apple, .groq, .off]
+        return [.apple, .openModel, .groq, .off]
         #else
         return [.local, .apple, .groq, .off]
         #endif
@@ -45,9 +46,36 @@ public enum AIProvider: String, CaseIterable, Identifiable {
     }
 }
 
+/// Small open LLMs that fit on a phone (4-bit MLX builds from mlx-community on Hugging Face).
+public struct PhoneLLMOption: Identifiable, Equatable {
+    public let id: String          // Hugging Face repo
+    public let label: String
+    public let sizeGB: Double
+    public let license: String
+    /// Qwen3-family models "think" before answering unless told not to.
+    public let disableThinking: Bool
+    /// Extra end-of-turn tokens the model emits.
+    public let eosTokens: [String]
+}
+
 public enum ModelCatalog {
     public static let defaultSpeechModel = "openai_whisper-base.en"
     public static let defaultLLM = "llama3.2:3b"
+    /// Qwen3 1.7B gave the most accurate meeting summaries in testing.
+    public static let defaultPhoneLLM = "mlx-community/Qwen3-1.7B-4bit"
+
+    public static let phoneLLMs: [PhoneLLMOption] = [
+        .init(id: "mlx-community/Qwen3-1.7B-4bit", label: "Qwen3 1.7B (Alibaba, recommended)", sizeGB: 0.98,
+              license: "Apache 2.0", disableThinking: true, eosTokens: ["<|im_end|>"]),
+        .init(id: "mlx-community/gemma-3-1b-it-qat-4bit", label: "Gemma 3 1B (Google)", sizeGB: 0.77,
+              license: "Gemma Terms of Use", disableThinking: false, eosTokens: ["<end_of_turn>"]),
+        .init(id: "mlx-community/Llama-3.2-1B-Instruct-4bit", label: "Llama 3.2 1B (Meta)", sizeGB: 0.71,
+              license: "Llama 3.2 Community License", disableThinking: false, eosTokens: ["<|eot_id|>"]),
+        .init(id: "mlx-community/Qwen3.5-2B-4bit", label: "Qwen3.5 2B (Alibaba, best, newer phones)", sizeGB: 1.75,
+              license: "Apache 2.0", disableThinking: true, eosTokens: ["<|im_end|>"])
+    ]
+
+    public static func phoneLLM(_ id: String) -> PhoneLLMOption? { phoneLLMs.first { $0.id == id } }
 
     public static let speechModels: [SpeechModelOption] = [
         .init(id: "openai_whisper-tiny.en", label: "Tiny (English, fastest)", sizeMB: 75, multilingual: false),

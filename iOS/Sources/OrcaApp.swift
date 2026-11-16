@@ -5,6 +5,7 @@ import OrcaShared
 struct OrcaApp: App {
     init() {
         Secrets.groqKeyProvider = { Keychain.read("groqApiKey") }
+        OnDeviceLLM.engine = MLXPhoneEngine()
         if !UserDefaults.standard.bool(forKey: "ios.didSetDefaults") {
             // iOS has no Ollama; on-device speech is the only transcription path.
             Preferences.useLocalSTT = true
